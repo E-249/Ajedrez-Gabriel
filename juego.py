@@ -2,12 +2,13 @@ from enum import Enum
 
 unicode = True
 
+SIDE = 8
+
 def tablero():
-	side = 8
-	tablero = [[Casilla(Pieza.VACIO, Equipo.VACIO)] * side for _ in range(side)]
+	tablero = [[Casilla(Pieza.VACIO, Equipo.VACIO)] * SIDE for _ in range(SIDE)]
 	
-	for (equipo, f) in [(Equipo.BLANCAS, lambda y: y), (Equipo.NEGRAS, lambda y: side-1 - y)]:
-		for x in range(side):
+	for (equipo, f) in [(Equipo.BLANCAS, lambda y: y), (Equipo.NEGRAS, lambda y: SIDE-1 - y)]:
+		for x in range(SIDE):
 			tablero[x][f(1)] = Casilla(Pieza.PEON, equipo)
 			y = f(0)
 			tablero[0][y] = Casilla(Pieza.TORRE, equipo)
@@ -22,9 +23,24 @@ def tablero():
 	return tablero
 
 def print_tablero():
-	for y in range(8):
-		for x in range(8):
-			print(repr(tablero[x][7-y]), '', end='')
+	for y in range(SIDE):
+		for x in range(SIDE):
+			casilla = tablero[x][SIDE-1 - y]
+			_, equipo = casilla.as_tup()
+			match equipo:
+
+				# Fondo
+				case Equipo.VACIO:
+					if (x + y) % 2 == 0:
+						icon = '□'
+					else:
+						icon = '■'
+
+				# Piezas
+				case _:
+					icon = repr(casilla)
+
+			print(icon + ' ', end='')
 		print()
 
 class Pieza(Enum):
@@ -47,12 +63,11 @@ class Equipo(Enum):
 	def __repr__(self):
 		match self:
 			case Equipo.BLANCAS:
-				return 'b'
+				return '□Blancas□'
 			case Equipo.NEGRAS:
-				return 'n'
+				return '■Negras■'
 			case Equipo.VACIO:
 				return '_'
-		return str(self.value)
 
 	def enemigo(self):
 		match self:
@@ -60,6 +75,15 @@ class Equipo(Enum):
 				return Equipo.NEGRAS
 			case Equipo.NEGRAS:
 				return Equipo.BLANCAS
+
+def altura(y: int, equipo: Equipo) -> int:
+	match equipo:
+		case Equipo.VACIO:
+			return y
+		case Equipo.BLANCAS:
+			return y
+		case Equipo.NEGRAS:
+			return SIDE-1 - y
 
 class Casilla:
 	def __init__(self, pieza: Pieza, equipo: Equipo):
@@ -71,7 +95,13 @@ class Casilla:
 	
 	def __repr__(self):
 		if not unicode:
-			return repr(self.pieza) + repr(self.equipo)
+			match self.equipo:
+				case Equipo.VACIO:
+					return '_'
+				case Equipo.BLANCAS:
+					return repr(self.pieza).lower()
+				case Equipo.NEGRAS:
+					return repr(self.pieza).upper()
 
 		match self.equipo:
 			case Equipo.VACIO:
@@ -135,13 +165,26 @@ def puede_mover(x0: int, y0: int, xF: int, yF: int) -> bool:
 				# Casilla destino ocupada
 				if pieza_destino != Pieza.VACIO:
 					return False
+
+				s_dy = sentido * dy
+
+				# Casilla destino al alcance
+				if (dx, s_dy) == (0, 1):
+					return True
+
+				# Casilla destino al alcance (fila 2, avanzar dos casillas)
+				if altura(y0, equipo_origen) == 1 and (dx, s_dy) == (0, 2):
+
+					# (calcular incremento)
+					ix, iy = incr(dx, dy)
+
+					# (que no haya piezas en medio)
+					pieza_en_camino, _ = tablero[x0+ix][y0+iy].as_tup()
+					if pieza_en_camino == Pieza.VACIO:
+						return True
 				
-				# Casila no al alcance [TODO: añadir dos pasos]
-				if (dx, sentido*dy) != (0, 1):
-					return False
-				
-				# Cumple
-				return True
+				# No cumple
+				return False
 			
 			def atacar() -> bool:
 				# Casilla destino no es enemiga
@@ -277,17 +320,57 @@ def puede_mover(x0: int, y0: int, xF: int, yF: int) -> bool:
 			# Cumple
 			return True
 
-def mover(x0: int, y0: int, xF: int, yF: int):
+def mover(x0: int, y0: int, xF: int, yF: int) -> bool:
 	if puede_mover(x0, y0, xF, yF):
 		casilla = tablero[x0][y0]
 		tablero[x0][y0] = Casilla(Pieza.VACIO, Equipo.VACIO)
 		tablero[xF][yF] = casilla
+		return True
 	else:
 		print(tablero[x0][y0], 'NOPE!', tablero[xF][yF])
+		return False
+
+
+def loop():
+	equipo = Equipo.BLANCAS
+
 	print_tablero()
 	print('----------------')
+	while True:
+		print(repr(equipo))
+
+		while True:
+			try:
+				x0 = int(input('x0: '))
+				y0 = int(input('y0: '))
+
+				casilla = tablero[x0][y0]
+				_, equipo_origen = casilla.as_tup()
+				if equipo_origen != equipo:
+					print('Pieza incorrecta:', repr(casilla))
+					continue
+
+				print('Pieza seleccionada:', repr(casilla))
+
+				xF = int(input('xF: '))
+				yF = int(input('yF: '))
+
+				if mover(x0, y0, xF, yF):
+					print_tablero()
+					print('----------------')
+					break
+			except Exception as e:
+				print(f"Error occurred: {e}")
+				continue
+
+
+		equipo = equipo.enemigo()
+
 
 if __name__ == "__main__":
+	loop()
+
+def recipe():
 	mover(4, 4, 4, 4)
 
 	mover(1, 1, 1, 2)
@@ -314,3 +397,5 @@ if __name__ == "__main__":
 	mover(1, 4, 1, 5)
 
 	mover(0, 6, 1, 5)
+
+	mover(6, 1, 6, 3)
