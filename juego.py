@@ -1,9 +1,11 @@
 from enum import Enum
 
-unicode = True
+unicode = True # cómo se dibujar el tablero. True: usar iconos, False: usar letras
 
-SIDE = 8
+SIDE = 8 # tamaño (en casillas) de cada lado del tablero
 
+
+# [Principal] Crea el tablero y lo inicia con la posición por defecto de las piezas.
 def tablero():
 	tablero = [[Casilla(Pieza.VACIO, Equipo.VACIO)] * SIDE for _ in range(SIDE)]
 	
@@ -22,6 +24,7 @@ def tablero():
 	
 	return tablero
 
+# [Principal] Imprime el tablero.
 def print_tablero():
 	for y in range(SIDE):
 		for x in range(SIDE):
@@ -43,6 +46,7 @@ def print_tablero():
 			print(icon + ' ', end='')
 		print()
 
+# [Clase] Piezas, con su respectiva sigla.
 class Pieza(Enum):
 	VACIO = '_'
 	PEON = 'P'
@@ -51,15 +55,18 @@ class Pieza(Enum):
 	TORRE = 'T'
 	DAMA = 'D'
 	REY = 'R'
-	
+
+	# La representación de una pieza es su sigla.
 	def __repr__(self):
 		return str(self.value)
 
+# [Clase] Equipos, con su respectivo valor.
 class Equipo(Enum):
 	BLANCAS = +1
 	NEGRAS = -1
 	VACIO = 0
 
+	# Representación del equipo.
 	def __repr__(self):
 		match self:
 			case Equipo.BLANCAS:
@@ -69,13 +76,18 @@ class Equipo(Enum):
 			case Equipo.VACIO:
 				return '_'
 
+	# Equipo enemigo de 'self'
 	def enemigo(self):
 		match self:
 			case Equipo.BLANCAS:
 				return Equipo.NEGRAS
 			case Equipo.NEGRAS:
 				return Equipo.BLANCAS
+			case Equipo.VACIO:
+				return Equipo.VACIO
 
+# [Auxiliar] Indica la altura respecto al equipo.
+# Donde '0' es la fila de las piezas mayores de su equipo.
 def altura(y: int, equipo: Equipo) -> int:
 	match equipo:
 		case Equipo.VACIO:
@@ -85,15 +97,20 @@ def altura(y: int, equipo: Equipo) -> int:
 		case Equipo.NEGRAS:
 			return SIDE-1 - y
 
+# [Clase] Casillas, compuestas por pieza y equipo.
 class Casilla:
 	def __init__(self, pieza: Pieza, equipo: Equipo):
 		self.pieza = pieza
 		self.equipo = equipo
-	
+
+	# [Auxiliar] Simplifica una Casilla como '(pieza, equipo)'
 	def as_tup(self) -> tuple[Pieza, Equipo]:
 		return (self.pieza, self.equipo)
-	
+
+	# Representación
 	def __repr__(self):
+
+		# Con letras
 		if not unicode:
 			match self.equipo:
 				case Equipo.VACIO:
@@ -103,6 +120,7 @@ class Casilla:
 				case Equipo.NEGRAS:
 					return repr(self.pieza).upper()
 
+		# Con iconos
 		match self.equipo:
 			case Equipo.VACIO:
 				return ' '
@@ -136,8 +154,11 @@ class Casilla:
 					case Pieza.REY:
 						return '♚'
 
+# [Lanzador] Inicia el tablero
 tablero = tablero()
 
+# [Auxiliar] Limita un vector.
+# El máximo por cada lado será |1|, es decir, absoluto de 1.
 def incr(dx, dy):
 	if dx > 0: ix = +1
 	elif dx < 0: ix = -1
@@ -149,6 +170,9 @@ def incr(dx, dy):
 
 	return (ix, iy)
 
+# [Principal] Indica si un movimiento es legal.
+# - x0, y0: la casilla de origen.
+# - xF, yF: la casilla de destino.
 def puede_mover(x0: int, y0: int, xF: int, yF: int) -> bool:
 	(dx, dy) = (xF - x0, yF - y0)
 	(pieza_origen, equipo_origen) = tablero[x0][y0].as_tup()
@@ -316,10 +340,13 @@ def puede_mover(x0: int, y0: int, xF: int, yF: int) -> bool:
 			# Casilla destino no al alcance
 			if (abs(dx), abs(dy)) not in [(0, 1), (1, 1), (1, 0)]:
 				return False
-			
+
 			# Cumple
 			return True
 
+# [Principal] Realiza un movimiento si es legal; si no lo es, imprime un error
+# - x0, y0: la casilla de origen.
+# - xF, yF: la casilla de destino.
 def mover(x0: int, y0: int, xF: int, yF: int) -> bool:
 	if puede_mover(x0, y0, xF, yF):
 		casilla = tablero[x0][y0]
@@ -330,7 +357,11 @@ def mover(x0: int, y0: int, xF: int, yF: int) -> bool:
 		print(tablero[x0][y0], 'NOPE!', tablero[xF][yF])
 		return False
 
+def en_jaque(x: int, y: int) -> list[Casilla]:
+	...
 
+# [Principal] Bucle del juego. Gestiona los turnos y el input.
+# En caso de error, vuelve a pedir el input.
 def loop():
 	equipo = Equipo.BLANCAS
 
@@ -367,9 +398,11 @@ def loop():
 		equipo = equipo.enemigo()
 
 
+# [Lanzador] Inicia el juego.
 if __name__ == "__main__":
 	loop()
 
+# [Test] Para testear jugadas sin tener que replicarlas a mano.
 def recipe():
 	mover(4, 4, 4, 4)
 
