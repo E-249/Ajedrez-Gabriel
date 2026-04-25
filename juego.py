@@ -154,8 +154,14 @@ class Casilla:
 					case Pieza.REY:
 						return '♚'
 
-# [Lanzador] Inicia el tablero
+# [Lanzador] Inicia el tablero y turno
 tablero = tablero()
+turno = Equipo.BLANCAS
+
+# [Auxiliar] Siguiente turno.
+def siguiente_turno():
+	global turno
+	turno = turno.enemigo()
 
 # [Auxiliar] Limita un vector.
 # El máximo por cada lado será |1|, es decir, absoluto de 1.
@@ -170,10 +176,10 @@ def incr(dx, dy):
 
 	return (ix, iy)
 
-# [Principal] Indica si un movimiento es legal.
+# [Principal] Indica si un movimiento es posible.
 # - x0, y0: la casilla de origen.
 # - xF, yF: la casilla de destino.
-def puede_mover(x0: int, y0: int, xF: int, yF: int) -> bool:
+def puede_llegar(x0: int, y0: int, xF: int, yF: int) -> bool:
 	(dx, dy) = (xF - x0, yF - y0)
 	(pieza_origen, equipo_origen) = tablero[x0][y0].as_tup()
 	(pieza_destino, equipo_destino) = tablero[xF][yF].as_tup()
@@ -344,31 +350,77 @@ def puede_mover(x0: int, y0: int, xF: int, yF: int) -> bool:
 			# Cumple
 			return True
 
+# [Auxiliar] Encuentra al rey.
+def dónde_estáis_alteza(equipo: Equipo) -> tuple[int, int]:
+	for x in range(SIDE):
+		for y in range(SIDE):
+			esta_pieza, este_equipo = tablero[x][y].as_tup()
+			if esta_pieza == Pieza.REY and este_equipo == equipo:
+				return (x, y)
+
+	raise ValueError("¡No! ¡Os maldigo, equipo rival!")
+
+# [Auxiliar] Dada una casilla, devuelve las casillas que le hacen jaque.
+# - x, y: la casilla objetivo.
+def en_jaque(x: int, y: int) -> list[tuple[int, int]]:
+	casillas: list[tuple[int, int]] = []
+
+	for x0 in range(SIDE):
+		for y0 in range(SIDE):
+			if puede_llegar(x0, y0, x, y):
+				casillas.append((x0, y0))
+
+	return casillas
+
+# [Principal] Indica si un movimiento es legal.
+# - x0, y0: la casilla de origen.
+# - xF, yF: la casilla de destino.
+def puede_mover(x0: int, y0: int, xF: int, yF: int) -> bool:
+
+	# Casilla destino al alcance
+	if not puede_llegar(x0, y0, xF, yF):
+		return False
+
+	# Guardar estado del tablero
+	casilla_origen = tablero[x0][y0]
+	casilla_destino = tablero[xF][yF]
+
+	# Realizar movimiento
+	tablero[x0][y0] = Casilla(Pieza.VACIO, Equipo.VACIO)
+	tablero[xF][yF] = casilla_origen
+
+	# Buscar al rey
+	_, equipo = casilla_origen.as_tup()
+	x, y = dónde_estáis_alteza(equipo)
+
+	# Rey en jaque
+	if en_jaque(x, y):
+		# (reestablecer tablero)
+		tablero[x0][y0] = casilla_origen
+		tablero[xF][yF] = casilla_destino
+		return False
+
+	# Cumple
+	return True
+
 # [Principal] Realiza un movimiento si es legal; si no lo es, imprime un error
 # - x0, y0: la casilla de origen.
 # - xF, yF: la casilla de destino.
 def mover(x0: int, y0: int, xF: int, yF: int) -> bool:
 	if puede_mover(x0, y0, xF, yF):
-		casilla = tablero[x0][y0]
-		tablero[x0][y0] = Casilla(Pieza.VACIO, Equipo.VACIO)
-		tablero[xF][yF] = casilla
+		siguiente_turno()
 		return True
 	else:
 		print(tablero[x0][y0], 'NOPE!', tablero[xF][yF])
 		return False
 
-def en_jaque(x: int, y: int) -> list[Casilla]:
-	...
-
 # [Principal] Bucle del juego. Gestiona los turnos y el input.
 # En caso de error, vuelve a pedir el input.
 def loop():
-	equipo = Equipo.BLANCAS
-
 	print_tablero()
 	print('----------------')
 	while True:
-		print(repr(equipo))
+		print(repr(turno))
 
 		while True:
 			try:
@@ -377,7 +429,7 @@ def loop():
 
 				casilla = tablero[x0][y0]
 				_, equipo_origen = casilla.as_tup()
-				if equipo_origen != equipo:
+				if equipo_origen != turno:
 					print('Pieza incorrecta:', repr(casilla))
 					continue
 
@@ -395,15 +447,8 @@ def loop():
 				continue
 
 
-		equipo = equipo.enemigo()
-
-
-# [Lanzador] Inicia el juego.
-if __name__ == "__main__":
-	loop()
-
 # [Test] Para testear jugadas sin tener que replicarlas a mano.
-def recipe():
+def recipe1():
 	mover(4, 4, 4, 4)
 
 	mover(1, 1, 1, 2)
@@ -432,3 +477,19 @@ def recipe():
 	mover(0, 6, 1, 5)
 
 	mover(6, 1, 6, 3)
+
+# [Test] Para testear jugadas sin tener que replicarlas a mano.
+def recipe2():
+	mover(4, 1, 4, 3)
+	mover(4, 6, 4, 4)
+
+	mover(3, 0, 5, 2)
+	mover(4, 7, 4, 6)
+	mover(3, 1, 3, 3)
+
+	# mover(4, 0, 4, 1)
+	# mover(3, 7, 5, 5)
+
+
+# [Lanzador] Inicia el juego.
+loop()
