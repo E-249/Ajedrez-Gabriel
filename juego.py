@@ -424,8 +424,10 @@ def loop():
 
 		while True:
 			try:
-				x0 = int(input('x0: '))
-				y0 = int(input('y0: '))
+				x0 = int(input('x0: ')) - 1
+				if not 0 <= x0 < SIDE: continue
+				y0 = int(input('y0: ')) - 1
+				if not 0 <= y0 < SIDE: continue
 
 				casilla = tablero[x0][y0]
 				_, equipo_origen = casilla.as_tup()
@@ -435,8 +437,10 @@ def loop():
 
 				print('Pieza seleccionada:', repr(casilla))
 
-				xF = int(input('xF: '))
-				yF = int(input('yF: '))
+				xF = int(input('xF: ')) - 1
+				if not 0 <= xF < SIDE: continue
+				yF = int(input('yF: ')) - 1
+				if not 0 <= yF < SIDE: continue
 
 				if mover(x0, y0, xF, yF):
 					print_tablero()
