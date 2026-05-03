@@ -46,19 +46,21 @@ def print_tablero():
 			print(icon + ' ', end='')
 		print()
 
+sigla_piezas = ['P', 'C', 'A', 'T', 'D', 'R', '_']
+
 # [Clase] Piezas, con su respectiva sigla.
 class Pieza(Enum):
-	VACIO = '_'
-	PEON = 'P'
-	CABALLO = 'C'
-	ALFIL = 'A'
-	TORRE = 'T'
-	DAMA = 'D'
-	REY = 'R'
+	PEON = 0
+	CABALLO = 1
+	ALFIL = 2
+	TORRE = 3
+	DAMA = 4
+	REY = 5
+	VACIO = 6
 
 	# La representación de una pieza es su sigla.
 	def __repr__(self):
-		return str(self.value)
+		return str(sigla_piezas[self.value])
 
 # [Clase] Equipos, con su respectivo valor.
 class Equipo(Enum):
@@ -372,6 +374,25 @@ def en_jaque(x: int, y: int) -> list[tuple[int, int]]:
 
 	return casillas
 
+# todo: fix
+def en_jaque_mate(x: int, y: int) -> bool:
+
+	if not en_jaque(x, y):
+		return False
+
+	_, equipo_rey = tablero[x][y].as_tup()
+	mov_rey = [(+1, 0), (-1, 0), (0, +1), (0, -1), (+1, +1), (-1, -1), (+1, -1), (-1, +1)]
+
+	for dx, dy in mov_rey:
+		nx, ny = x + dx, y + dy
+		if 0 <= nx < SIDE and 0 <= ny < SIDE:
+
+			_, equipo = tablero[nx][ny].as_tup()
+			if equipo_rey != equipo and not en_jaque(nx, ny):
+				return False
+
+	return True
+
 # [Principal] Indica si un movimiento es legal.
 # - x0, y0: la casilla de origen.
 # - xF, yF: la casilla de destino.
@@ -483,13 +504,116 @@ def recipe2():
 	mover(4, 1, 4, 3)
 	mover(4, 6, 4, 4)
 
-	mover(3, 0, 5, 2)
+	mover(3, 1, 3, 2)
 	mover(4, 7, 4, 6)
-	mover(3, 1, 3, 3)
+	mover(3, 2, 3, 3)
+	mover(4, 6, 5, 5)
 
-	# mover(4, 0, 4, 1)
-	# mover(3, 7, 5, 5)
+	mover(3, 0, 5, 2)
+	mover(4, 4, 3, 3)
 
 
 # [Lanzador] Inicia el juego.
-loop()
+recipe2()
+#loop()
+
+
+
+
+
+# Example file showing a circle moving on screen
+import pygame
+
+
+ancho = 720 # 1280
+alto = 720
+
+lado = min(ancho, alto) / SIDE
+mx, my = 0, 0
+if ancho < alto:
+	my = (alto - ancho) / 2
+elif ancho > alto:
+	mx = (ancho - alto) / 2
+
+# pygame setup
+pygame.init()
+screen = pygame.display.set_mode((ancho, alto))
+clock = pygame.time.Clock()
+running = True
+
+def dibujar_pieza(pieza: Pieza, equipo: Equipo):
+	image = pygame.image.load("piezas.png").convert_alpha()
+	color = 0 if equipo == Equipo.BLANCAS else 1
+	image = image.subsurface((pieza.value * 9, color * 21, 9, 21))
+	image = pygame.transform.scale_by(image, (4, 4))
+	return image
+
+
+def get_pos_clic(x: int, y: int) -> tuple[int, int]:
+	return int((x - mx) / lado), int((y - my) / lado)
+
+
+# Load image and convert for better performance
+imagen_piezas_blancas = [dibujar_pieza(pieza, Equipo.BLANCAS) for pieza in Pieza if pieza != Pieza.VACIO]
+imagen_piezas_negras = [dibujar_pieza(pieza, Equipo.NEGRAS) for pieza in Pieza if pieza != Pieza.VACIO]
+
+ancho_pieza = lado * 9 / 21
+alto_pieza = lado
+mx_pieza = (lado - ancho_pieza) / 2
+my_pieza = 0 # lado * -0.3
+
+clicando_izq, clicando_der = False, False
+
+while running:
+	# poll for events
+	# pygame.QUIT event means the user clicked X to close your window
+	for event in pygame.event.get():
+		match event.type:
+			case pygame.QUIT:
+				running = False
+			case pygame.MOUSEBUTTONDOWN:
+				izq, _, der = pygame.mouse.get_pressed()
+				cursor_x, cursor_y = pygame.mouse.get_pos()
+				if not clicando_izq and izq:
+					clicando_izq = True
+					print('Pos:', get_pos_clic(cursor_x, cursor_y))
+				if not clicando_der and der:
+					clicando_der = True
+					print('Pos:', get_pos_clic(cursor_x, cursor_y))
+
+			case pygame.MOUSEBUTTONUP:
+				izq, med, der = pygame.mouse.get_pressed()
+				if not izq: clicando_izq = False
+				if not der: clicando_der = False
+
+
+	# fill the screen with a color to wipe away anything from last frame
+	screen.fill("gray")
+
+	# Fondo
+	for x in range(SIDE):
+		for y in range(SIDE):
+			color = "white" if (x + y) % 2 == 0 else "black"
+			pygame.draw.rect(screen, color, (x * lado + mx, y * lado + my, lado, lado))
+
+	# Piezas
+	for y in range(SIDE):
+		for x in range(SIDE):
+			pieza, equipo = tablero[x][SIDE-1 - y].as_tup()
+			match equipo:
+				case Equipo.BLANCAS:
+					screen.blit(imagen_piezas_blancas[pieza.value], (x * lado + mx + mx_pieza, y * lado + my + my_pieza))
+				case Equipo.NEGRAS:
+					screen.blit(imagen_piezas_negras[pieza.value], (x * lado + mx + mx_pieza, y * lado + my + my_pieza))
+
+
+
+	# flip() the display to put your work on screen
+	pygame.display.flip()
+
+	# limits FPS to 60
+	# dt is delta time in seconds since last frame, used for framerate-
+	# independent physics.
+	clock.tick(60)
+
+pygame.quit()
