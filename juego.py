@@ -518,7 +518,7 @@ def recipe2():
 
 
 # [Lanzador] Inicia el juego.
-recipe2()
+#recipe2()
 #loop()
 
 
@@ -554,7 +554,7 @@ def dibujar_pieza(pieza: Pieza, equipo: Equipo):
 
 
 def get_pos_clic(x: int, y: int) -> tuple[int, int]:
-	return int((x - mx) / lado), int((y - my) / lado)
+	return int((x - mx) / lado), SIDE-1 - int((y - my) / lado)
 
 
 # Load image and convert for better performance
@@ -567,6 +567,7 @@ mx_pieza = (lado - ancho_pieza) / 2
 my_pieza = 0 # lado * -0.3
 
 clicando_izq, clicando_der = False, False
+casilla_selec: tuple[int, int] | None = None
 
 while running:
 	# poll for events
@@ -580,6 +581,20 @@ while running:
 				cursor_x, cursor_y = pygame.mouse.get_pos()
 				if not clicando_izq and izq:
 					clicando_izq = True
+
+					x, y = get_pos_clic(cursor_x, cursor_y)
+
+					# Seleccionar origen
+					if casilla_selec is None:
+						casilla_selec = x, y
+						continue
+
+					# Selecciona destino
+					sel_x, sel_y = casilla_selec
+					if not (x == sel_x and y == sel_y):
+						mover(sel_x, sel_y, x, y)
+					casilla_selec = None
+
 					print('Pos:', get_pos_clic(cursor_x, cursor_y))
 				if not clicando_der and der:
 					clicando_der = True
@@ -599,6 +614,12 @@ while running:
 		for y in range(SIDE):
 			color = "white" if (x + y) % 2 == 0 else "black"
 			pygame.draw.rect(screen, color, (x * lado + mx, y * lado + my, lado, lado))
+
+	if casilla_selec is not None:
+		x, y = casilla_selec
+		y = SIDE-1 - y
+		color = (175, 255, 175) if (x + y) % 2 == 0 else (0, 80, 0)
+		pygame.draw.rect(screen, color, (x * lado + mx, y * lado + my, lado, lado))
 
 	# Piezas
 	for y in range(SIDE):
